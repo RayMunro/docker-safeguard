@@ -62,14 +62,19 @@ def _build_preview(archive_path: Path) -> dict[str, Any]:
     host_config = raw.get("HostConfig", {}) or {}
 
     data_conflicts = []
-    unreachable_paths = []
+    unreachable_paths = []  # blocking: unreachable AND has real data to lose
+    skipped_paths = []  # non-blocking: unreachable but empty, safe to skip
     for p in m["data_paths"]:
         if not p.get("included"):
             continue
         host_path = Path(p["host_path"])
         reachable = is_under_known_mount(p["host_path"])
+        has_data = bool(p.get("size_bytes"))
         if not reachable:
-            unreachable_paths.append(p["host_path"])
+            if has_data:
+                unreachable_paths.append(p["host_path"])
+            else:
+                skipped_paths.append(p["host_path"])
         exists_nonempty = False
         if reachable and host_path.exists():
             try:
@@ -83,12 +88,14 @@ def _build_preview(archive_path: Path) -> dict[str, Any]:
                 "container_path": p["container_path"],
                 "exists_nonempty": exists_nonempty,
                 "reachable": reachable,
+                "has_data": has_data,
                 "size_display": human_size(p.get("size_bytes")),
             }
         )
 
     return {
         "unreachable_paths": unreachable_paths,
+        "skipped_paths": skipped_paths,
         "manifest": m,
         "name": name,
         "image": image,
@@ -134,16 +141,25 @@ def _do_restore(job: Job, archive_path: Path, clear_existing_data: bool, remove_
     image = m["container"]["image"]
     raw = m["container"]["raw_inspect"]
 
-    unreachable = [
-        p["host_path"]
-        for p in m["data_paths"]
-        if p.get("included") and not is_under_known_mount(p["host_path"])
-    ]
-    if unreachable:
+    unreachable_with_data = []
+    for p in m["data_paths"]:
+        if not p.get("included") or is_under_known_mount(p["host_path"]):
+            continue
+        if p.get("size_bytes"):
+            unreachable_with_data.append(p["host_path"])
+        else:
+            # Nothing archived there (e.g. a plugin's own mount point, not
+            # real appdata) - safe to just skip rather than block the whole
+            # restore over a path with nothing to actually lose.
+            job.log(f"skipping unreachable, empty path {p['host_path']}")
+            p["included"] = False
+
+    if unreachable_with_data:
         raise RuntimeError(
-            "Refusing to restore: these paths aren't reachable through any of this "
-            "app's mounted folders, so the data would be written inside the "
-            "container itself and lost, not to real storage: " + ", ".join(unreachable)
+            "Refusing to restore: these paths have real data but aren't reachable "
+            "through any of this app's mounted folders, so the data would be "
+            "written inside the container itself and lost, not to real storage: "
+            + ", ".join(unreachable_with_data)
         )
 
     if remove_existing_container and docker_client.container_exists(name):

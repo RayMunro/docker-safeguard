@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from .config import BROWSE_ROOTS, is_appdata_path
+from .config import BROWSE_ROOTS, is_appdata_path, is_under_known_mount
 
 
 def human_size(num_bytes: int | None) -> str:
@@ -42,6 +42,7 @@ def classify_data_paths(mounts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out = []
     for idx, m in enumerate(mounts):
         source = m["source"]
+        reachable = is_under_known_mount(source)
         out.append(
             {
                 "index": idx,
@@ -49,7 +50,14 @@ def classify_data_paths(mounts: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "host_path": source,
                 "container_path": m["destination"],
                 "mode": m["mode"],
-                "included_default": is_appdata_path(source),
+                "reachable": reachable,
+                # Only offer a path as backupable if it's both plausibly
+                # appdata AND actually reachable through one of this app's
+                # mounts - a host system path (e.g. a plugin's own mount
+                # point, like Tailscale's container hook) is never real
+                # per-app data worth archiving, whether or not it happens
+                # to live under /mnt/user/appdata.
+                "included_default": reachable and is_appdata_path(source),
             }
         )
     return out

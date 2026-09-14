@@ -36,12 +36,17 @@
     {% endif %}
     {% for p in data_paths %}
     <div class="checkbox-row">
-      <input type="checkbox" name="included" value="{{ p.index }}" id="path{{ p.index }}" {{ 'checked' if p.included_default else '' }}>
+      <input type="checkbox" name="included" value="{{ p.index }}" id="path{{ p.index }}"
+        {{ 'checked' if p.included_default else '' }} {{ 'disabled' if not p.reachable else '' }}>
       <label for="path{{ p.index }}" style="margin:0; font-weight:400; flex:1">
         <code>{{ p.container_path }}</code> → <span class="muted">{{ p.host_path }}</span>
       </label>
       <span class="badge badge-muted">{{ p.size_display }}</span>
-      {% if not p.included_default %}<span class="badge badge-warning">not appdata — opt-in</span>{% endif %}
+      {% if not p.reachable %}
+        <span class="badge badge-danger" title="Not under any folder this app has mounted — can't be backed up">not reachable</span>
+      {% elif not p.included_default %}
+        <span class="badge badge-warning">not appdata — opt-in</span>
+      {% endif %}
     </div>
     {% endfor %}
   </div>

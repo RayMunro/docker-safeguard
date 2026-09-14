@@ -33,12 +33,23 @@
 
 {% if unreachable_paths %}
 <div class="alert alert-danger">
-  <strong>Can't restore:</strong> this backup's data path(s) aren't reachable through any folder this app has
-  mounted, so restoring would silently write into the app's own container instead of real storage:
+  <strong>Can't restore:</strong> this backup has real data at path(s) that aren't reachable through any folder
+  this app has mounted, so restoring would silently write into the app's own container instead of real storage:
   <ul style="margin:6px 0 0">
     {% for path in unreachable_paths %}<li><code>{{ path }}</code></li>{% endfor %}
   </ul>
   Add a mount covering that path to Docker Safeguard's own container, then try again.
+</div>
+{% endif %}
+
+{% if skipped_paths %}
+<div class="alert alert-warning">
+  <strong>Note:</strong> these path(s) aren't reachable through any folder this app has mounted, but they're
+  empty in this backup (nothing was actually archived there — likely a plugin's own mount point, not real
+  appdata), so they'll just be skipped rather than blocking the restore:
+  <ul style="margin:6px 0 0">
+    {% for path in skipped_paths %}<li><code>{{ path }}</code></li>{% endfor %}
+  </ul>
 </div>
 {% endif %}
 
@@ -91,7 +102,8 @@
           <td class="muted">{{ p.host_path }}</td>
           <td>{{ p.size_display }}</td>
           <td>
-            {% if not p.reachable %}<span class="badge badge-danger">not reachable</span>
+            {% if not p.reachable and p.has_data %}<span class="badge badge-danger">not reachable</span>
+            {% elif not p.reachable %}<span class="badge badge-warning">not reachable — skipping</span>
             {% elif p.exists_nonempty %}<span class="badge badge-warning">has existing files</span>
             {% else %}<span class="badge badge-success">empty</span>{% endif %}
           </td>
