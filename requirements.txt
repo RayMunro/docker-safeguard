@@ -1,0 +1,11 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+docker==7.1.0
+sqlmodel==0.0.22
+jinja2==3.1.5
+python-multipart==0.0.20
+passlib==1.7.4
+bcrypt==4.0.1
+itsdangerous==2.2.0
+apscheduler==3.10.4
+httpx==0.28.1

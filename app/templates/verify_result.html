@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Verify archive · Docker Safeguard{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Verify archive</h1></div><a href="/settings" class="btn btn-ghost">← Settings</a></div>
+<div class="card stack">
+  {% if result %}
+    {% if result.integrity_ok %}
+      <div class="alert alert-success">Archive integrity OK.</div>
+      {% if result.manifest_ok %}
+        <dl class="kv">
+          <dt>Container</dt><dd>{{ result.container_name }}</dd>
+          <dt>Created</dt><dd>{{ result.created_at }}</dd>
+        </dl>
+      {% else %}
+        <div class="alert alert-warning">Compressed data is fine, but the manifest couldn't be read: {{ result.manifest_error }}</div>
+      {% endif %}
+    {% else %}
+      <div class="alert alert-danger">Archive failed integrity check: {{ result.stderr }}</div>
+    {% endif %}
+  {% else %}
+    <p class="muted">Pick a file below to verify it.</p>
+    <select style="width:auto" onchange="htmx.ajax('GET', '/browse/dirs?root='+this.value+'&open_url=/settings/verify', {target:'#vbrowser', swap:'outerHTML'})">
+      {% for r in browse_roots %}
+      <option value="{{ r }}">{{ r }}</option>
+      {% endfor %}
+    </select>
+    <div hx-get="/browse/dirs?root=shares&open_url=/settings/verify" hx-trigger="load" hx-target="#vbrowser" hx-swap="outerHTML">
+      <div id="vbrowser"></div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Log in · Docker Safeguard{% endblock %}
+{% block auth_content %}
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <h1><span>🛡</span> Docker Safeguard</h1>
+    <p class="tagline">Backup and restore your Docker apps, appdata and all.</p>
+    {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+    <form method="post" action="/login">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <button class="btn btn-block" type="submit">Log in</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

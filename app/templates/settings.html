@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Settings · Docker Safeguard{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Settings</h1></div></div>
+
+<div class="stack">
+  <div class="card stack">
+    <label>Notifications</label>
+    <form method="post" action="/settings/webhook" class="row">
+      <input type="text" name="webhook_url" placeholder="https://... (Apprise/webhook URL, optional)" value="{{ webhook_url }}" style="flex:1; min-width:220px">
+      <button class="btn btn-secondary" type="submit">Save</button>
+    </form>
+    <div class="hint">If set, a POST is sent here when a scheduled backup succeeds or fails.</div>
+  </div>
+
+  <div class="card stack">
+    <label>Change password</label>
+    {% if password_error %}<div class="alert alert-danger">{{ password_error }}</div>{% endif %}
+    {% if password_success %}<div class="alert alert-success">Password updated.</div>{% endif %}
+    <form method="post" action="/settings/password" class="stack">
+      <input type="password" name="current_password" placeholder="Current password" required>
+      <input type="password" name="new_password" placeholder="New password" required minlength="8">
+      <input type="password" name="new_password2" placeholder="Confirm new password" required minlength="8">
+      <button class="btn btn-secondary" type="submit" style="align-self:flex-start">Update password</button>
+    </form>
+  </div>
+
+  <div class="card stack">
+    <label>Verify a backup archive</label>
+    <div class="hint">Checks the archive isn't corrupted, without restoring it.</div>
+    <select style="width:auto" onchange="htmx.ajax('GET', '/browse/dirs?root='+this.value+'&open_url=/settings/verify', {target:'#vbrowser', swap:'outerHTML'})">
+      {% for r in browse_roots %}
+      <option value="{{ r }}" {{ 'selected' if r == 'shares' else '' }}>{{ r }}</option>
+      {% endfor %}
+    </select>
+    <div hx-get="/browse/dirs?root=shares&open_url=/settings/verify" hx-trigger="load" hx-target="#vbrowser" hx-swap="outerHTML">
+      <div id="vbrowser"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

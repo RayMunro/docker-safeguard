@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Restore · Docker Safeguard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Restore a backup</h1>
+    <p>Pick a <code>.safeguard.tar.zst</code> file from a share or drive, or upload one.</p>
+  </div>
+  <a href="/" class="btn btn-ghost">← Back</a>
+</div>
+
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+<div class="card stack" style="margin-bottom:16px">
+  <label>Browse for a backup file</label>
+  <select style="width:auto" onchange="htmx.ajax('GET', '/browse/dirs?root='+this.value+'&open_url=/restore/preview', {target:'#browser', swap:'outerHTML'})">
+    {% for r in browse_roots %}
+    <option value="{{ r }}" {{ 'selected' if r == 'shares' else '' }}>{{ r }}</option>
+    {% endfor %}
+  </select>
+  <div hx-get="/browse/dirs?root=shares&open_url=/restore/preview" hx-trigger="load" hx-target="#browser" hx-swap="outerHTML">
+    <div id="browser"></div>
+  </div>
+</div>
+
+<div class="card stack">
+  <label>Or upload a backup file</label>
+  <form method="post" action="/restore/upload" enctype="multipart/form-data" class="row">
+    <input type="file" name="file" accept=".zst,.tar.zst" required style="flex:1; min-width:200px">
+    <button class="btn" type="submit">Upload &amp; preview</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ kind|capitalize }} in progress · Docker Safeguard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ kind|capitalize }}: {{ job.container_name if job else '' }}</h1>
+    <p>This page updates automatically.</p>
+  </div>
+  <a href="/" class="btn btn-ghost">← Dashboard</a>
+</div>
+<div class="card">
+  {% include "partials/job_status.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Restore preview · Docker Safeguard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Restore {{ name }}</h1>
+    <p>Backed up {{ created_at }} from {{ source_server }}.</p>
+  </div>
+  <a href="/restore" class="btn btn-ghost">← Back</a>
+</div>
+
+<div class="card stack" style="margin-bottom:16px">
+  <dl class="kv">
+    <dt>Image</dt><dd>{{ image }}</dd>
+    <dt>Restart policy</dt><dd>{{ restart_policy or '—' }}</dd>
+    <dt>Environment variables</dt><dd>{{ env_count }} (values hidden)</dd>
+    <dt>Ports</dt>
+    <dd>
+      {% if ports %}
+        {% for cport, bindings in ports.items() %}
+          {{ cport }} → {% for b in bindings %}{{ b.HostPort }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not loop.last %}; {% endif %}
+        {% endfor %}
+      {% else %}—{% endif %}
+    </dd>
+    <dt>Data to restore</dt><dd>{{ total_size_display }}</dd>
+    <dt>unRAID template</dt><dd>{{ 'will be restored (icon, WebUI link, etc.)' if has_template else 'not captured at backup time' }}</dd>
+    {% if named_volumes %}
+    <dt>Named volumes</dt>
+    <dd class="muted">{{ named_volumes|length }} named volume(s) were used and are <strong>not</strong> restored by this tool — only bind-mounted appdata paths are.</dd>
+    {% endif %}
+  </dl>
+</div>
+
+<form method="post" action="/restore/run" class="stack">
+  <input type="hidden" name="source_root" value="{{ source_root }}">
+  <input type="hidden" name="source_path" value="{{ source_path }}">
+  <input type="hidden" name="source_token" value="{{ source_token }}">
+
+  <div class="card stack">
+    <label>Checks</label>
+    {% if container_exists %}
+      <div class="alert alert-warning">
+        A container named <strong>{{ name }}</strong> already exists. It will be <strong>removed</strong> before restoring, unless you uncheck this below.
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" name="remove_existing_container" id="remove_existing_container" checked>
+        <label for="remove_existing_container" style="margin:0; font-weight:400">Remove the existing container first</label>
+      </div>
+    {% else %}
+      <div class="alert alert-success">No naming conflict — {{ name }} doesn't exist yet.</div>
+    {% endif %}
+
+    {% if image_locally_present %}
+      <div class="muted">Image already present locally; will still check for updates.</div>
+    {% else %}
+      <div class="muted">Image will be pulled from its registry.</div>
+    {% endif %}
+
+    {% set any_data_conflict = data_conflicts|selectattr('exists_nonempty')|list %}
+    {% if any_data_conflict %}
+      <div class="alert alert-warning">
+        Some destination folders already contain files. By default the backup is extracted on top (existing files not
+        in the backup are left alone). Check below to wipe each folder first instead.
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" name="clear_existing_data" id="clear_existing_data">
+        <label for="clear_existing_data" style="margin:0; font-weight:400">Delete existing data at the target paths before restoring</label>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card stack">
+    <label>Data paths</label>
+    <table>
+      <thead><tr><th>Container path</th><th>Restores to</th><th>Size</th><th></th></tr></thead>
+      <tbody>
+        {% for p in data_conflicts %}
+        <tr>
+          <td><code>{{ p.container_path }}</code></td>
+          <td class="muted">{{ p.host_path }}</td>
+          <td>{{ p.size_display }}</td>
+          <td>{% if p.exists_nonempty %}<span class="badge badge-warning">has existing files</span>{% else %}<span class="badge badge-success">empty</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <button class="btn" type="submit">Restore {{ name }}</button>
+</form>
+{% endblock %}

@@ -1,0 +1,40 @@
+<div id="job-status"
+     {% if job and job.status == 'running' %}
+     hx-get="/{{ kind }}/jobs/{{ job_id }}/status" hx-trigger="load delay:1s" hx-target="#job-status" hx-swap="outerHTML"
+     {% endif %}>
+  {% if not job %}
+    <div class="alert alert-warning">Job not found (the app may have restarted). Check the Logs page for history.</div>
+  {% else %}
+    <div class="row" style="margin-bottom:10px">
+      {% if job.status == 'running' %}
+        <span class="badge badge-warning">running…</span>
+      {% elif job.status == 'success' %}
+        <span class="badge badge-success">✓ success</span>
+      {% else %}
+        <span class="badge badge-danger">✗ failed</span>
+      {% endif %}
+      <span class="muted">{{ job.percent }}%</span>
+    </div>
+    <div class="progress-bar" style="margin-bottom:14px">
+      <div class="progress-bar-fill" style="width: {{ job.percent }}%"></div>
+    </div>
+
+    {% if job.error %}
+      <div class="alert alert-danger">{{ job.error }}</div>
+    {% endif %}
+
+    {% if job.status == 'success' %}
+      <div class="alert alert-success">
+        {% if kind == 'backup' %}
+          Backup saved{% if job.result and job.result.archive_path %} to <code>{{ job.result.archive_path }}</code>{% endif %}.
+        {% else %}
+          {{ job.container_name }} was restored and started.
+          <a href="/">Back to dashboard</a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="log-console">{% for line in job.log_lines %}{{ line }}
+{% endfor %}</div>
+  {% endif %}
+</div>

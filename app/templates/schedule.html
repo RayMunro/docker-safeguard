@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Schedule · Docker Safeguard{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Scheduled backups</h1><p>Automatic, recurring backups with retention.</p></div></div>
+
+<div class="card stack" style="margin-bottom:16px">
+  <label>Add a schedule</label>
+  <form method="post" action="/schedule/add" class="stack" x-data="{ freq: 'daily' }">
+    <div class="row">
+      <select name="container_name" required style="flex:1; min-width:160px">
+        {% for n in container_names %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+      </select>
+      <select name="frequency" x-model="freq" style="width:auto">
+        <option value="daily">Daily (3am)</option>
+        <option value="weekly">Weekly (Sun 3am)</option>
+        <option value="monthly">Monthly (1st, 3am)</option>
+        <option value="custom">Custom cron…</option>
+      </select>
+      <input type="text" name="custom_cron" placeholder="e.g. 0 */6 * * *" x-show="freq === 'custom'" style="width:160px">
+    </div>
+    <div class="row">
+      <select name="destination_root" style="width:auto">
+        {% for r in browse_roots %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+      </select>
+      <input type="text" name="destination_subpath" placeholder="destination folder, e.g. backups" style="flex:1; min-width:180px">
+      <label class="row" style="gap:6px"><span class="muted">Keep last</span>
+        <input type="number" name="retention" value="5" min="1" style="width:70px"></label>
+    </div>
+    <button class="btn" type="submit" style="align-self:flex-start">Add schedule</button>
+  </form>
+</div>
+
+<div class="card">
+  {% if not schedules %}
+    <div class="empty-state">No schedules yet.</div>
+  {% else %}
+  <table>
+    <thead><tr><th>Container</th><th>Cron</th><th>Destination</th><th>Keep</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for s in schedules %}
+      <tr>
+        <td>{{ s.container_name }}</td>
+        <td><code>{{ s.cron }}</code></td>
+        <td class="muted">{{ s.destination }}</td>
+        <td>{{ s.retention }}</td>
+        <td>{% if s.enabled %}<span class="badge badge-success">enabled</span>{% else %}<span class="badge badge-muted">paused</span>{% endif %}</td>
+        <td class="row">
+          <form method="post" action="/schedule/{{ s.id }}/toggle"><button class="btn btn-sm btn-secondary" type="submit">{{ 'Pause' if s.enabled else 'Resume' }}</button></form>
+          <form method="post" action="/schedule/{{ s.id }}/delete"><button class="btn btn-sm btn-danger" type="submit">Delete</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Docker Safeguard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Your Docker apps</h1>
+    <p>Back up any app's appdata and full configuration in one click.</p>
+  </div>
+  <a href="/restore" class="btn btn-secondary">Restore from backup</a>
+</div>
+
+{% if not docker_ok %}
+  <div class="alert alert-danger">
+    Can't reach the Docker socket. Make sure <code>/var/run/docker.sock</code> is mounted into this container.
+  </div>
+{% elif not containers %}
+  <div class="empty-state">No containers found on this server.</div>
+{% else %}
+  <div class="grid">
+    {% for c in containers %}
+    <div class="app-card">
+      <div class="app-card-head">
+        {% if c.icon %}
+        <img class="app-icon" src="{{ c.icon }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'), {className:'app-icon-fallback', textContent:'{{ c.name[0]|upper }}'}))">
+        {% else %}
+        <div class="app-icon-fallback">{{ c.name[0]|upper }}</div>
+        {% endif %}
+        <div style="min-width:0">
+          <div class="app-name" title="{{ c.name }}">{{ c.name }}</div>
+          <div class="app-image" title="{{ c.image }}">{{ c.image }}</div>
+        </div>
+      </div>
+
+      <div class="row">
+        {% if c.status == 'running' %}
+          <span class="badge badge-success">● running</span>
+        {% elif c.status == 'exited' %}
+          <span class="badge badge-muted">○ stopped</span>
+        {% else %}
+          <span class="badge badge-warning">{{ c.status }}</span>
+        {% endif %}
+        {% if c.settings and c.settings.last_backup_at %}
+          <span class="badge badge-success" title="{{ c.settings.last_backup_at }}">backed up</span>
+        {% else %}
+          <span class="badge badge-warning">never backed up</span>
+        {% endif %}
+      </div>
+
+      <div class="app-card-foot">
+        <span class="muted">
+          {% if c.settings and c.settings.last_backup_at %}
+            Last: {{ c.settings.last_backup_at.strftime('%b %d, %H:%M') }}
+          {% else %}
+            —
+          {% endif %}
+        </span>
+        <a class="btn btn-sm" href="/backup/{{ c.name }}/options">Backup now</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Logs · Docker Safeguard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Job history</h1><p>Recent backups and restores.</p></div>
+</div>
+
+<div class="card">
+  {% if not jobs %}
+    <div class="empty-state">No jobs yet.</div>
+  {% else %}
+  <table>
+    <thead><tr><th>When</th><th>Container</th><th>Kind</th><th>Status</th><th>Size</th><th>Archive</th></tr></thead>
+    <tbody>
+      {% for j in jobs %}
+      <tr>
+        <td>{{ j.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ j.container_name }}</td>
+        <td>{{ j.kind }}</td>
+        <td>
+          {% if j.status == 'success' %}<span class="badge badge-success">success</span>
+          {% elif j.status == 'running' %}<span class="badge badge-warning">running</span>
+          {% else %}<span class="badge badge-danger">failed</span>{% endif %}
+        </td>
+        <td>{{ j.size_bytes|human_size if j.size_bytes else '—' }}</td>
+        <td class="muted" style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ j.archive_path or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

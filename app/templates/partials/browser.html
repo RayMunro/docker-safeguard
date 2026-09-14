@@ -1,0 +1,44 @@
+<div id="browser" data-root="{{ root }}">
+  <div class="breadcrumbs">
+    /{{ root }}{% if listing.subpath %}/{{ listing.subpath }}{% endif %}
+  </div>
+  <div class="file-browser">
+    {% if listing.subpath %}
+    <div class="file-row is-dir"
+         hx-get="/browse/dirs?root={{ root }}&path={{ (listing.subpath.rsplit('/', 1)[0] if '/' in listing.subpath else '') }}&target_input={{ target_input }}&open_url={{ open_url }}"
+         hx-target="#browser" hx-swap="outerHTML">
+      .. (up)
+    </div>
+    {% endif %}
+    {% for entry in listing.entries %}
+      {% if entry.is_dir %}
+      <div class="file-row is-dir"
+           hx-get="/browse/dirs?root={{ root }}&path={{ (listing.subpath + '/' + entry.name).strip('/') }}&target_input={{ target_input }}&open_url={{ open_url }}"
+           hx-target="#browser" hx-swap="outerHTML">
+        {{ entry.name }}
+      </div>
+      {% elif open_url %}
+      <a class="file-row is-file" style="color:inherit"
+         href="{{ open_url }}?root={{ root }}&path={{ (listing.subpath + '/' + entry.name).strip('/') }}">
+        {{ entry.name }} <span class="muted">{{ entry.size }}</span>
+      </a>
+      {% else %}
+      <div class="file-row is-file"
+           onclick="document.getElementById('{{ target_input }}').value='{{ (listing.subpath + '/' + entry.name).strip('/') }}'; document.getElementById('{{ target_input }}_root') && (document.getElementById('{{ target_input }}_root').value='{{ root }}');">
+        {{ entry.name }} <span class="muted">{{ entry.size }}</span>
+      </div>
+      {% endif %}
+    {% else %}
+      {% if not listing.subpath %}<div class="file-row muted">(empty)</div>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="row" style="margin-top:8px">
+    {% if not open_url %}
+    <button type="button" class="btn btn-sm btn-secondary"
+      onclick="document.getElementById('{{ target_input }}').value='{{ listing.subpath }}'; document.getElementById('{{ target_input }}_root') && (document.getElementById('{{ target_input }}_root').value='{{ root }}');">
+      Use this folder
+    </button>
+    {% endif %}
+    <span class="muted">{{ listing.full_path }}</span>
+  </div>
+</div>
