@@ -1,18 +1,19 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>docker-safeguard</Name>
-  <Repository>docker-safeguard:local</Repository>
-  <Registry/>
+  <Repository>ghcr.io/raymunro/docker-safeguard:latest</Repository>
+  <Registry>https://github.com/RayMunro/docker-safeguard/pkgs/container/docker-safeguard</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Support>https://github.com/raymunro/docker-safeguard</Support>
-  <Project>https://github.com/raymunro/docker-safeguard</Project>
+  <Support>https://github.com/RayMunro/docker-safeguard/issues</Support>
+  <Project>https://github.com/RayMunro/docker-safeguard</Project>
   <Overview>Backs up any Docker app's appdata and full configuration (image, ports, env vars, mounts, the unRAID template itself) into one archive, and restores it elsewhere so the app comes back up instantly runnable with the same data and options. Save backups to any unRAID share or an external USB/NVMe/HDD.</Overview>
   <Category>Backup:</Category>
   <WebUI>http://[IP]:[PORT:8000]/</WebUI>
-  <Icon>http://10.10.20.50:8091/static/icon.png</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/RayMunro/docker-safeguard/main/templates/docker-safeguard.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/RayMunro/docker-safeguard/main/app/static/icon.png</Icon>
   <ExtraParams/>
   <DateInstalled/>
   <Requires/>
