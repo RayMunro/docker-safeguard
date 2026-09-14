@@ -87,9 +87,11 @@ putting something else (a reverse proxy with auth, Tailscale, etc.) in front
 of it.
 
 A restore always writes into one of the mounts above; if a backup's original
-data path somehow falls outside all of them, Docker Safeguard refuses to
-restore it rather than silently losing data — see the in-app warning if that
-ever happens.
+data path somehow falls outside all of them *and actually has data in it*,
+Docker Safeguard refuses to restore rather than silently losing it — see the
+in-app warning if that ever happens. An unreachable path with nothing
+archived in it (e.g. a plugin's own mount point, not real appdata) is just
+skipped instead of blocking the whole restore.
 
 ## What gets backed up
 
@@ -124,10 +126,13 @@ double the disk space to back up.
 - **Backup** — pick a destination (browse any share, or a mounted external
   drive), review which paths are included, and go. Advanced options let you
   skip stopping the container first, exclude glob patterns within a path, or
-  include a normally-excluded mount.
-- **Restore** — browse to (or upload) a `.safeguard.tar.zst` file. You get a
-  plain-language preview — image, ports, data size, conflicts — before
-  anything happens, and a live progress view while it runs.
+  include a normally-excluded mount. The destination picker pre-selects
+  wherever that app was last backed up to, or your last-used folder if it's
+  the first time.
+- **Restore** — browse to (or upload) a `.safeguard.tar.zst` file, picking up
+  right where the folder browser last left off. You get a plain-language
+  preview — image, ports, data size, conflicts — before anything happens,
+  and a live progress view while it runs.
 - **Schedule** — recurring backups with daily/weekly/monthly presets or a raw
   cron expression, and a "keep last N" retention policy.
 - **Logs** — history of every backup/restore, including failures.
