@@ -128,11 +128,16 @@ double the disk space to back up.
   skip stopping the container first, exclude glob patterns within a path, or
   include a normally-excluded mount. The destination picker pre-selects
   wherever that app was last backed up to, or your last-used folder if it's
-  the first time.
+  the first time. A running backup can be cancelled — the partial archive is
+  removed and the container is restarted if it had been stopped.
 - **Restore** — browse to (or upload) a `.safeguard.tar.zst` file, picking up
   right where the folder browser last left off. You get a plain-language
   preview — image, ports, data size, conflicts — before anything happens,
-  and a live progress view while it runs.
+  and a live progress view while it runs. A running restore can also be
+  cancelled: unlike backup, files already written are left in place rather
+  than deleted (they're real data, possibly merged into what was already
+  there), but no container is created on top of a partial restore — just
+  re-run it to finish the job.
 - **Schedule** — recurring backups with daily/weekly/monthly presets or a raw
   cron expression, and a "keep last N" retention policy.
 - **Logs** — history of every backup/restore, including failures.

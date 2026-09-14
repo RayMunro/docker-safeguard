@@ -11,6 +11,8 @@ from typing import Any, Iterable
 import docker
 from docker.errors import NotFound
 
+from .jobs import JobCancelled
+
 log = logging.getLogger("docker_safeguard.docker_client")
 
 
@@ -105,14 +107,19 @@ def is_running(name: str) -> bool:
         return False
 
 
-def pull_image(image_ref: str, log_cb=None) -> None:
-    """image_ref like 'repo/name:tag'. Streams progress lines to log_cb."""
+def pull_image(image_ref: str, log_cb=None, cancel_check=None) -> None:
+    """image_ref like 'repo/name:tag'. Streams progress lines to log_cb.
+    If cancel_check() becomes true mid-pull, stops reading the stream
+    (best-effort: the daemon may finish the pull server-side regardless,
+    but we treat it as cancelled from the app's point of view)."""
     if ":" in image_ref.rsplit("/", 1)[-1]:
         repo, tag = image_ref.rsplit(":", 1)
     else:
         repo, tag = image_ref, "latest"
     last_status = None
     for line in api().pull(repo, tag=tag, stream=True, decode=True):
+        if cancel_check and cancel_check():
+            raise JobCancelled()
         status = line.get("status")
         progress = line.get("progress", "")
         if status and status != last_status and log_cb:

@@ -21,14 +21,21 @@
       <div class="progress-bar-fill" style="width: {{ job.percent }}%"></div>
     </div>
 
-    {% if job.status == 'running' and kind == 'backup' %}
-      <form method="post" action="/backup/jobs/{{ job_id }}/cancel" style="margin-bottom:14px">
-        <button class="btn btn-sm btn-danger" type="submit">Cancel backup</button>
+    {% if job.status == 'running' %}
+      <form method="post" action="/{{ kind }}/jobs/{{ job_id }}/cancel" style="margin-bottom:14px">
+        <button class="btn btn-sm btn-danger" type="submit">Cancel {{ kind }}</button>
       </form>
     {% endif %}
 
     {% if job.status == 'cancelled' %}
-      <div class="alert alert-warning">Backup cancelled — the partial archive was removed.</div>
+      <div class="alert alert-warning">
+        {% if kind == 'backup' %}
+          Backup cancelled — the partial archive was removed.
+        {% else %}
+          Restore cancelled — no container was created. See the log below for whether any
+          data was written before it stopped.
+        {% endif %}
+      </div>
     {% endif %}
 
     {% if job.error %}

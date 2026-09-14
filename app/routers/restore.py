@@ -12,7 +12,7 @@ from ..app_config import get_config, set_config
 from ..auth import require_login
 from ..config import ARCHIVE_SUFFIX, BROWSE_ROOTS, UPLOAD_DIR, is_under_known_mount
 from ..db import session_scope
-from ..jobs import Job, create_job, get_job, run_in_background
+from ..jobs import Job, JobCancelled, cancel_job, create_job, get_job, run_in_background
 from ..models import AppSetting, BackupJob
 from ..paths import human_size
 from ..template_xml import write_template
@@ -174,6 +174,9 @@ def _do_restore(job: Job, archive_path: Path, clear_existing_data: bool, remove_
             + ", ".join(unreachable_with_data)
         )
 
+    if job.is_cancelled():
+        raise JobCancelled()
+
     if remove_existing_container and docker_client.container_exists(name):
         job.log(f"removing existing container {name}")
         docker_client.remove(name, force=True)
@@ -187,16 +190,40 @@ def _do_restore(job: Job, archive_path: Path, clear_existing_data: bool, remove_
                 job.log(f"clearing existing data at {host_path}")
                 shutil.rmtree(host_path, ignore_errors=True)
 
+    if job.is_cancelled():
+        # Nothing has been extracted yet, so this is still a clean abort -
+        # just no container gets (re)created. A container removed or data
+        # cleared above by request is the one irreversible part of this;
+        # noted here so it's visible if it applies.
+        if remove_existing_container or clear_existing_data:
+            job.log("cancelled before restoring data - note: the existing container/data removal above already ran")
+        raise JobCancelled()
+
     job.log(f"pulling image {image}")
     try:
-        docker_client.pull_image(image, log_cb=job.log)
+        docker_client.pull_image(image, log_cb=job.log, cancel_check=job.is_cancelled)
+    except JobCancelled:
+        raise
     except Exception as exc:  # noqa: BLE001
         job.log(f"warning: could not pull {image} ({exc}); trying local copy if present")
         if not docker_client.image_exists_locally(image):
             raise
 
     job.log("restoring data")
-    archive.extract_archive(archive_path, m, log_cb=job.log, progress_cb=job.set_percent)
+    try:
+        archive.extract_archive(
+            archive_path, m, log_cb=job.log, progress_cb=job.set_percent, cancel_check=job.is_cancelled
+        )
+    except JobCancelled:
+        if job.percent:
+            job.log(
+                "cancelled partway through restoring data - files already written stay in "
+                "place (possibly merged with what was there before), but no container was "
+                "created. Re-run the restore to finish it."
+            )
+        else:
+            job.log("cancelled before any data was written")
+        raise
 
     if m.get("template_xml"):
         job.log("restoring unRAID template")
@@ -260,3 +287,9 @@ def restore_job_status(request: Request, job_id: str, user: str = Depends(requir
     return templates.TemplateResponse(
         request, "partials/job_status.html", {"job_id": job_id, "kind": "restore", "job": snap}
     )
+
+
+@router.post("/jobs/{job_id}/cancel")
+def restore_job_cancel(job_id: str, user: str = Depends(require_login)):
+    cancel_job(job_id)
+    return RedirectResponse(f"/restore/jobs/{job_id}", status_code=303)

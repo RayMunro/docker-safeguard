@@ -167,6 +167,7 @@ def extract_archive(
     path_overrides: dict[str, str] | None = None,
     log_cb: LogCb = None,
     progress_cb: ProgressCb = None,
+    cancel_check: CancelCheck = None,
 ) -> None:
     path_overrides = path_overrides or {}
     arcname_to_dest: dict[str, str] = {}
@@ -188,6 +189,14 @@ def extract_archive(
     try:
         with tarfile.open(fileobj=proc.stdout, mode="r|") as tar:
             for member in tar:
+                if cancel_check and cancel_check():
+                    # Unlike a cancelled backup, we do NOT delete what's
+                    # already been extracted here - it's real restored
+                    # data (possibly merged into pre-existing files), not
+                    # a throwaway output file. The caller is responsible
+                    # for not proceeding to create the container on top
+                    # of a partial restore.
+                    raise JobCancelled()
                 if member.name == "manifest.json" or not member.name.startswith("data/"):
                     continue
                 rel = member.name[len("data/") :]
