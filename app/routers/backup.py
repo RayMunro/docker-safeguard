@@ -6,25 +6,50 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
 from .. import archive, docker_client, manifest as manifest_mod
+from ..app_config import get_config, set_config
 from ..auth import require_login
 from ..config import BROWSE_ROOTS
 from ..db import get_session, session_scope
 from ..jobs import Job, create_job, get_job, run_in_background
 from ..models import AppSetting, BackupJob
-from ..paths import classify_data_paths, dir_size_bytes, human_size
+from ..paths import classify_data_paths, dir_size_bytes, human_size, path_to_root_subpath
 from ..web import templates
 
 router = APIRouter(prefix="/backup")
 
 
+def _prefill_destination(name: str, session: Session) -> tuple[str, str]:
+    """Where to pre-select the destination picker: this app's own last
+    backup location if it has one, else the last destination used for any
+    app, else the usual backups/<name> default."""
+    setting = session.get(AppSetting, name)
+    if setting and setting.last_backup_path:
+        resolved = path_to_root_subpath(str(Path(setting.last_backup_path).parent))
+        if resolved:
+            return resolved
+
+    last_root = get_config("last_backup_root")
+    if last_root and last_root in BROWSE_ROOTS:
+        return last_root, get_config("last_backup_subpath")
+
+    return "shares", f"backups/{name}"
+
+
 @router.get("/{name}/options")
-def backup_options(request: Request, name: str, user: str = Depends(require_login)):
+def backup_options(
+    request: Request,
+    name: str,
+    user: str = Depends(require_login),
+    session: Session = Depends(get_session),
+):
     inspect_data = docker_client.inspect(name)
     mounts = docker_client.bind_mounts(inspect_data)
     data_paths = classify_data_paths(mounts)
     for p in data_paths:
         size = dir_size_bytes(p["host_path"], timeout=8)
         p["size_display"] = human_size(size) if size is not None else "unknown"
+
+    prefill_root, prefill_subpath = _prefill_destination(name, session)
 
     return templates.TemplateResponse(
         request,
@@ -33,6 +58,8 @@ def backup_options(request: Request, name: str, user: str = Depends(require_logi
             "container_name": name,
             "data_paths": data_paths,
             "browse_roots": list(BROWSE_ROOTS.keys()),
+            "prefill_root": prefill_root,
+            "prefill_subpath": prefill_subpath,
         },
     )
 
@@ -98,6 +125,9 @@ def backup_run(
     user: str = Depends(require_login),
     session: Session = Depends(get_session),
 ):
+    set_config("last_backup_root", destination_root)
+    set_config("last_backup_subpath", destination_subpath.strip("/"))
+
     root = BROWSE_ROOTS[destination_root]
     dest_dir = (root / destination_subpath.lstrip("/")).resolve()
     if dest_dir == root.resolve():

@@ -7,6 +7,20 @@ from typing import Any
 from .config import BROWSE_ROOTS, is_appdata_path, is_under_known_mount
 
 
+def path_to_root_subpath(path: str) -> tuple[str, str] | None:
+    """Inverse of joining a browse root + subpath: given an absolute host
+    path, find which BROWSE_ROOTS entry it falls under and the subpath
+    relative to it. None if it's not under any of them."""
+    p = Path(path).resolve()
+    for key, root in BROWSE_ROOTS.items():
+        root = root.resolve()
+        if p == root:
+            return key, ""
+        if root in p.parents:
+            return key, str(p.relative_to(root))
+    return None
+
+
 def human_size(num_bytes: int | None) -> str:
     if not num_bytes:
         return "0 B"

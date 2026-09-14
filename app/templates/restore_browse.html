@@ -15,10 +15,10 @@
   <label>Browse for a backup file</label>
   <select style="width:auto" onchange="htmx.ajax('GET', '/browse/dirs?root='+this.value+'&open_url=/restore/preview', {target:'#browser', swap:'outerHTML'})">
     {% for r in browse_roots %}
-    <option value="{{ r }}" {{ 'selected' if r == 'shares' else '' }}>{{ r }}</option>
+    <option value="{{ r }}" {{ 'selected' if r == (prefill_root or 'shares') else '' }}>{{ r }}</option>
     {% endfor %}
   </select>
-  <div hx-get="/browse/dirs?root=shares&open_url=/restore/preview" hx-trigger="load" hx-target="#browser" hx-swap="outerHTML">
+  <div hx-get="/browse/dirs?root={{ prefill_root or 'shares' }}&path={{ prefill_subpath or '' }}&open_url=/restore/preview" hx-trigger="load" hx-target="#browser" hx-swap="outerHTML">
     <div id="browser"></div>
   </div>
 </div>

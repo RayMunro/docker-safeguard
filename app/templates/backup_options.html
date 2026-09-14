@@ -16,13 +16,13 @@
       <div class="row" style="margin-bottom:10px">
         <select style="width:auto" onchange="htmx.ajax('GET', '/browse/dirs?root='+this.value+'&target_input=destination_subpath&sync=1', {target:'#browser', swap:'outerHTML'})">
           {% for r in browse_roots %}
-          <option value="{{ r }}" {{ 'selected' if r == 'shares' else '' }}>{{ r }}</option>
+          <option value="{{ r }}" {{ 'selected' if r == prefill_root else '' }}>{{ r }}</option>
           {% endfor %}
         </select>
-        <input type="text" id="destination_subpath" name="destination_subpath" value="backups/{{ container_name }}" placeholder="folder within the root" style="flex:1; min-width:200px">
+        <input type="text" id="destination_subpath" name="destination_subpath" value="{{ prefill_subpath }}" placeholder="folder within the root" style="flex:1; min-width:200px">
       </div>
-      <input type="hidden" name="destination_root" id="destination_subpath_root" value="shares">
-      <div hx-get="/browse/dirs?root=shares&target_input=destination_subpath" hx-trigger="load" hx-target="#browser" hx-swap="outerHTML">
+      <input type="hidden" name="destination_root" id="destination_subpath_root" value="{{ prefill_root }}">
+      <div hx-get="/browse/dirs?root={{ prefill_root }}&path={{ prefill_subpath }}&target_input=destination_subpath" hx-trigger="load" hx-target="#browser" hx-swap="outerHTML">
         <div id="browser"></div>
       </div>
       <div class="hint">Works for any unRAID share, or a mounted USB/NVMe/HDD under Unassigned Devices.</div>

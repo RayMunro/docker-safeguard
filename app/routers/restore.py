@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import RedirectResponse
 
 from .. import archive, docker_client
+from ..app_config import get_config, set_config
 from ..auth import require_login
 from ..config import ARCHIVE_SUFFIX, BROWSE_ROOTS, UPLOAD_DIR, is_under_known_mount
 from ..db import session_scope
@@ -37,10 +38,18 @@ def _resolve_source(root: str, path: str, token: str) -> Path:
 
 @router.get("")
 def restore_home(request: Request, user: str = Depends(require_login)):
+    last_root = get_config("last_restore_root") or "shares"
+    if last_root not in BROWSE_ROOTS:
+        last_root = "shares"
+    last_subpath = get_config("last_restore_subpath")
     return templates.TemplateResponse(
         request,
         "restore_browse.html",
-        {"browse_roots": list(BROWSE_ROOTS.keys())},
+        {
+            "browse_roots": list(BROWSE_ROOTS.keys()),
+            "prefill_root": last_root,
+            "prefill_subpath": last_subpath,
+        },
     )
 
 
@@ -130,6 +139,9 @@ def restore_preview_from_query(
         return templates.TemplateResponse(
             request, "restore_browse.html", {"browse_roots": list(BROWSE_ROOTS.keys()), "error": str(exc)}
         )
+    if root and path:
+        set_config("last_restore_root", root)
+        set_config("last_restore_subpath", path.rsplit("/", 1)[0] if "/" in path else "")
     ctx.update({"source_root": root, "source_path": path, "source_token": token})
     return templates.TemplateResponse(request, "restore_preview.html", ctx)
 

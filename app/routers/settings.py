@@ -3,29 +3,15 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
 from .. import archive
+from ..app_config import get_config, set_config
 from ..auth import current_username, hash_password, require_login, verify_password
 from ..config import BROWSE_ROOTS
 from ..db import get_session
-from ..models import AppConfig, User
+from ..models import User
 from ..routers.restore import _resolve_source
 from ..web import templates
 
 router = APIRouter(prefix="/settings")
-
-
-def _get_config(session: Session, key: str, default: str = "") -> str:
-    row = session.get(AppConfig, key)
-    return row.value if row else default
-
-
-def _set_config(session: Session, key: str, value: str) -> None:
-    row = session.get(AppConfig, key)
-    if row:
-        row.value = value
-    else:
-        row = AppConfig(key=key, value=value)
-    session.add(row)
-    session.commit()
 
 
 @router.get("")
@@ -34,7 +20,7 @@ def settings_home(request: Request, user: str = Depends(require_login), session:
         request,
         "settings.html",
         {
-            "webhook_url": _get_config(session, "webhook_url"),
+            "webhook_url": get_config("webhook_url"),
             "browse_roots": list(BROWSE_ROOTS.keys()),
         },
     )
@@ -45,9 +31,8 @@ def settings_webhook(
     request: Request,
     webhook_url: str = Form(""),
     user: str = Depends(require_login),
-    session: Session = Depends(get_session),
 ):
-    _set_config(session, "webhook_url", webhook_url.strip())
+    set_config("webhook_url", webhook_url.strip())
     return RedirectResponse("/settings", status_code=303)
 
 
@@ -76,7 +61,7 @@ def settings_password(
         request,
         "settings.html",
         {
-            "webhook_url": _get_config(session, "webhook_url"),
+            "webhook_url": get_config("webhook_url"),
             "browse_roots": list(BROWSE_ROOTS.keys()),
             "password_error": error,
             "password_success": error is None,
