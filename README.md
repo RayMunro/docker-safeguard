@@ -128,8 +128,11 @@ double the disk space to back up.
   skip stopping the container first, exclude glob patterns within a path, or
   include a normally-excluded mount. The destination picker pre-selects
   wherever that app was last backed up to, or your last-used folder if it's
-  the first time. A running backup can be cancelled — the partial archive is
-  removed and the container is restarted if it had been stopped.
+  the first time. Clicking *Start backup* confirms the resolved destination
+  path in a dialog before anything happens, with a "don't show this again"
+  option once you trust your setup. A running backup can be cancelled — the
+  partial archive is removed and the container is restarted if it had been
+  stopped.
 - **Restore** — browse to (or upload) a `.safeguard.tar.zst` file, picking up
   right where the folder browser last left off. You get a plain-language
   preview — image, ports, data size, conflicts — before anything happens,
