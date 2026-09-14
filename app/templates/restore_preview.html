@@ -31,6 +31,17 @@
   </dl>
 </div>
 
+{% if unreachable_paths %}
+<div class="alert alert-danger">
+  <strong>Can't restore:</strong> this backup's data path(s) aren't reachable through any folder this app has
+  mounted, so restoring would silently write into the app's own container instead of real storage:
+  <ul style="margin:6px 0 0">
+    {% for path in unreachable_paths %}<li><code>{{ path }}</code></li>{% endfor %}
+  </ul>
+  Add a mount covering that path to Docker Safeguard's own container, then try again.
+</div>
+{% endif %}
+
 <form method="post" action="/restore/run" class="stack">
   <input type="hidden" name="source_root" value="{{ source_root }}">
   <input type="hidden" name="source_path" value="{{ source_path }}">
@@ -79,13 +90,17 @@
           <td><code>{{ p.container_path }}</code></td>
           <td class="muted">{{ p.host_path }}</td>
           <td>{{ p.size_display }}</td>
-          <td>{% if p.exists_nonempty %}<span class="badge badge-warning">has existing files</span>{% else %}<span class="badge badge-success">empty</span>{% endif %}</td>
+          <td>
+            {% if not p.reachable %}<span class="badge badge-danger">not reachable</span>
+            {% elif p.exists_nonempty %}<span class="badge badge-warning">has existing files</span>
+            {% else %}<span class="badge badge-success">empty</span>{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
-  <button class="btn" type="submit">Restore {{ name }}</button>
+  <button class="btn" type="submit" {{ 'disabled' if unreachable_paths else '' }}>Restore {{ name }}</button>
 </form>
 {% endblock %}

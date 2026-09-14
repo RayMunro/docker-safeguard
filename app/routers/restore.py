@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 
 from .. import archive, docker_client
 from ..auth import require_login
-from ..config import ARCHIVE_SUFFIX, BROWSE_ROOTS, UPLOAD_DIR
+from ..config import ARCHIVE_SUFFIX, BROWSE_ROOTS, UPLOAD_DIR, is_under_known_mount
 from ..db import session_scope
 from ..jobs import Job, create_job, get_job, run_in_background
 from ..models import AppSetting, BackupJob
@@ -62,12 +62,16 @@ def _build_preview(archive_path: Path) -> dict[str, Any]:
     host_config = raw.get("HostConfig", {}) or {}
 
     data_conflicts = []
+    unreachable_paths = []
     for p in m["data_paths"]:
         if not p.get("included"):
             continue
         host_path = Path(p["host_path"])
+        reachable = is_under_known_mount(p["host_path"])
+        if not reachable:
+            unreachable_paths.append(p["host_path"])
         exists_nonempty = False
-        if host_path.exists():
+        if reachable and host_path.exists():
             try:
                 exists_nonempty = any(host_path.iterdir())
             except (NotADirectoryError, PermissionError):
@@ -78,11 +82,13 @@ def _build_preview(archive_path: Path) -> dict[str, Any]:
                 "host_path": p["host_path"],
                 "container_path": p["container_path"],
                 "exists_nonempty": exists_nonempty,
+                "reachable": reachable,
                 "size_display": human_size(p.get("size_bytes")),
             }
         )
 
     return {
+        "unreachable_paths": unreachable_paths,
         "manifest": m,
         "name": name,
         "image": image,
@@ -127,6 +133,18 @@ def _do_restore(job: Job, archive_path: Path, clear_existing_data: bool, remove_
     name = m["container"]["name"]
     image = m["container"]["image"]
     raw = m["container"]["raw_inspect"]
+
+    unreachable = [
+        p["host_path"]
+        for p in m["data_paths"]
+        if p.get("included") and not is_under_known_mount(p["host_path"])
+    ]
+    if unreachable:
+        raise RuntimeError(
+            "Refusing to restore: these paths aren't reachable through any of this "
+            "app's mounted folders, so the data would be written inside the "
+            "container itself and lost, not to real storage: " + ", ".join(unreachable)
+        )
 
     if remove_existing_container and docker_client.container_exists(name):
         job.log(f"removing existing container {name}")

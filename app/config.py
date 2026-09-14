@@ -49,3 +49,14 @@ def get_secret_key() -> str:
 def is_appdata_path(host_path: str) -> bool:
     p = Path(host_path)
     return any(p == prefix or prefix in p.parents for prefix in APPDATA_PREFIXES)
+
+
+def is_under_known_mount(host_path: str) -> bool:
+    """True if host_path is actually reachable through one of this
+    container's persistent bind mounts. A restore target outside these
+    roots would silently "succeed" by writing into the app's own
+    ephemeral container filesystem instead of real host storage - callers
+    should refuse to extract there rather than fail silently."""
+    p = Path(host_path).resolve()
+    roots = list(BROWSE_ROOTS.values()) + [DATA_DIR]
+    return any(p == root or root in p.parents for root in roots)
