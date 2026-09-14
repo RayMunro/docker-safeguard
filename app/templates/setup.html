@@ -3,7 +3,7 @@
 {% block auth_content %}
 <div class="auth-wrap">
   <div class="card auth-card">
-    <h1><span>🛡</span> Docker Safeguard</h1>
+    <h1><img class="auth-mark" src="/static/icon.svg" alt=""> Docker Safeguard</h1>
     <p class="tagline">First-run setup. This app can control Docker and read/write your appdata, so let's set a password.</p>
     {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
     <form method="post" action="/setup">

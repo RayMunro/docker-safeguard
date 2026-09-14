@@ -12,7 +12,7 @@
   <Overview>Backs up any Docker app's appdata and full configuration (image, ports, env vars, mounts, the unRAID template itself) into one archive, and restores it elsewhere so the app comes back up instantly runnable with the same data and options. Save backups to any unRAID share or an external USB/NVMe/HDD.</Overview>
   <Category>Backup:</Category>
   <WebUI>http://[IP]:[PORT:8000]/</WebUI>
-  <Icon>https://cdn-icons-png.flaticon.com/512/2716/2716207.png</Icon>
+  <Icon>http://10.10.20.50:8091/static/icon.svg</Icon>
   <ExtraParams/>
   <DateInstalled/>
   <Requires/>

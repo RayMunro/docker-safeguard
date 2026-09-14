@@ -98,7 +98,7 @@ a:hover { text-decoration: underline; }
   white-space: nowrap;
 }
 .brand:hover { text-decoration: none; }
-.brand-mark { font-size: 1.2rem; }
+.brand-mark { width: 24px; height: 24px; border-radius: 6px; display: block; }
 
 .topnav { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
 .topnav a {
@@ -221,6 +221,7 @@ textarea { resize: vertical; min-height: 70px; font-family: ui-monospace, monosp
 }
 .auth-card { width: 100%; max-width: 380px; }
 .auth-card h1 { display: flex; align-items: center; gap: 10px; font-size: 1.3rem; margin: 0 0 4px; }
+.auth-mark { width: 32px; height: 32px; border-radius: 8px; display: block; }
 .auth-card p.tagline { color: var(--text-muted); margin: 0 0 24px; font-size: .92rem; }
 
 .alert {

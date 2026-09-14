@@ -3,7 +3,7 @@
 {% block auth_content %}
 <div class="auth-wrap">
   <div class="card auth-card">
-    <h1><span>🛡</span> Docker Safeguard</h1>
+    <h1><img class="auth-mark" src="/static/icon.svg" alt=""> Docker Safeguard</h1>
     <p class="tagline">Backup and restore your Docker apps, appdata and all.</p>
     {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
     <form method="post" action="/login">
