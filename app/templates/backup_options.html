@@ -9,7 +9,7 @@
   <a href="/" class="btn btn-ghost">← Back</a>
 </div>
 
-<form method="post" action="/backup/{{ container_name }}/run" class="stack">
+<form method="post" action="/backup/{{ container_name }}/run" class="stack" id="backup-form">
   <div class="card stack">
     <div class="form-group" style="margin-bottom:0">
       <label>Destination</label>
@@ -65,6 +65,44 @@
     </div>
   </details>
 
-  <button class="btn" type="submit">Start backup</button>
+  <button class="btn" type="button" onclick="dsgConfirmBackupLocation(event)">Start backup</button>
 </form>
+
+<dialog id="backup-location-dialog">
+  <h3 style="margin-top:0">Double-check the destination</h3>
+  <p>This backup will be saved to:</p>
+  <p><code id="backup-location-dialog-path" style="word-break:break-all"></code></p>
+  <p class="muted">Make sure this is actually where you want it — it's easy to end up somewhere
+    unexpected if the folder above wasn't deliberately chosen.</p>
+  <label class="checkbox-row" style="margin:16px 0">
+    <input type="checkbox" id="backup-location-dialog-dontshow">
+    <span>Don't show this again</span>
+  </label>
+  <div class="row" style="justify-content:flex-end">
+    <button type="button" class="btn btn-secondary" onclick="document.getElementById('backup-location-dialog').close()">Go back</button>
+    <button type="button" class="btn" onclick="dsgStartBackup()">Start backup</button>
+  </div>
+</dialog>
+
+<script>
+  function dsgConfirmBackupLocation(event) {
+    event.preventDefault();
+    if (localStorage.getItem('dsg-skip-backup-location-warning') === '1') {
+      document.getElementById('backup-form').requestSubmit();
+      return;
+    }
+    var root = document.getElementById('destination_subpath_root').value;
+    var subpath = document.getElementById('destination_subpath').value;
+    document.getElementById('backup-location-dialog-path').textContent =
+      '/' + root + (subpath ? '/' + subpath.replace(/^\/+/, '') : '');
+    document.getElementById('backup-location-dialog').showModal();
+  }
+  function dsgStartBackup() {
+    if (document.getElementById('backup-location-dialog-dontshow').checked) {
+      localStorage.setItem('dsg-skip-backup-location-warning', '1');
+    }
+    document.getElementById('backup-location-dialog').close();
+    document.getElementById('backup-form').requestSubmit();
+  }
+</script>
 {% endblock %}
