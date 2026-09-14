@@ -10,6 +10,8 @@
         <span class="badge badge-warning">running…</span>
       {% elif job.status == 'success' %}
         <span class="badge badge-success">✓ success</span>
+      {% elif job.status == 'cancelled' %}
+        <span class="badge badge-muted">cancelled</span>
       {% else %}
         <span class="badge badge-danger">✗ failed</span>
       {% endif %}
@@ -18,6 +20,16 @@
     <div class="progress-bar" style="margin-bottom:14px">
       <div class="progress-bar-fill" style="width: {{ job.percent }}%"></div>
     </div>
+
+    {% if job.status == 'running' and kind == 'backup' %}
+      <form method="post" action="/backup/jobs/{{ job_id }}/cancel" style="margin-bottom:14px">
+        <button class="btn btn-sm btn-danger" type="submit">Cancel backup</button>
+      </form>
+    {% endif %}
+
+    {% if job.status == 'cancelled' %}
+      <div class="alert alert-warning">Backup cancelled — the partial archive was removed.</div>
+    {% endif %}
 
     {% if job.error %}
       <div class="alert alert-danger">{{ job.error }}</div>

@@ -16,10 +16,12 @@ import tarfile
 from pathlib import Path
 from typing import Any, Callable
 
+from .jobs import JobCancelled
 from .paths import dir_size_bytes
 
 LogCb = Callable[[str], None] | None
 ProgressCb = Callable[[int], None] | None
+CancelCheck = Callable[[], bool] | None
 
 
 class _CountingWriter:
@@ -46,15 +48,21 @@ class _CountingWriter:
         self._fileobj.close()
 
 
-def _exclude_filter(patterns: list[str]):
-    if not patterns:
+def _make_filter(patterns: list[str], cancel_check: CancelCheck):
+    """tarfile calls this once per file/directory it's about to add, which
+    makes it a natural, frequent checkpoint to notice a cancellation
+    request without needing to touch tarfile's own file-copy internals."""
+    if not patterns and not cancel_check:
         return None
 
     def _filter(tarinfo: tarfile.TarInfo):
-        base = os.path.basename(tarinfo.name)
-        for pat in patterns:
-            if fnmatch.fnmatch(tarinfo.name, pat) or fnmatch.fnmatch(base, pat):
-                return None
+        if cancel_check and cancel_check():
+            raise JobCancelled()
+        if patterns:
+            base = os.path.basename(tarinfo.name)
+            for pat in patterns:
+                if fnmatch.fnmatch(tarinfo.name, pat) or fnmatch.fnmatch(base, pat):
+                    return None
         return tarinfo
 
     return _filter
@@ -66,6 +74,7 @@ def create_archive(
     exclude_patterns: list[str] | None = None,
     log_cb: LogCb = None,
     progress_cb: ProgressCb = None,
+    cancel_check: CancelCheck = None,
 ) -> int:
     """Writes manifest + included data paths to dest_path. Mutates
     manifest['data_paths'] entries with measured size_bytes. Returns the
@@ -87,28 +96,36 @@ def create_archive(
     )
     assert zstd_proc.stdin is not None
     writer = _CountingWriter(zstd_proc.stdin, total, progress_cb)
-    exclude = _exclude_filter(exclude_patterns or [])
+    tar_filter = _make_filter(exclude_patterns or [], cancel_check)
 
     try:
-        with tarfile.open(fileobj=writer, mode="w|") as tar:
-            manifest_bytes = json.dumps(manifest, indent=2, default=str).encode()
-            info = tarfile.TarInfo(name="manifest.json")
-            info.size = len(manifest_bytes)
-            tar.addfile(info, io.BytesIO(manifest_bytes))
+        try:
+            with tarfile.open(fileobj=writer, mode="w|") as tar:
+                manifest_bytes = json.dumps(manifest, indent=2, default=str).encode()
+                info = tarfile.TarInfo(name="manifest.json")
+                info.size = len(manifest_bytes)
+                tar.addfile(info, io.BytesIO(manifest_bytes))
 
-            for p in included:
-                host_path = Path(p["host_path"])
-                if not host_path.exists():
+                for p in included:
+                    if cancel_check and cancel_check():
+                        raise JobCancelled()
+                    host_path = Path(p["host_path"])
+                    if not host_path.exists():
+                        if log_cb:
+                            log_cb(f"skipping missing path {host_path}")
+                        continue
+                    arcname = f"data/{p['archive_member']}"
                     if log_cb:
-                        log_cb(f"skipping missing path {host_path}")
-                    continue
-                arcname = f"data/{p['archive_member']}"
-                if log_cb:
-                    log_cb(f"archiving {host_path} -> {arcname}")
-                tar.add(str(host_path), arcname=arcname, filter=exclude)
-    finally:
-        writer.close()
-        zstd_proc.wait()
+                        log_cb(f"archiving {host_path} -> {arcname}")
+                    tar.add(str(host_path), arcname=arcname, filter=tar_filter)
+        finally:
+            writer.close()
+            zstd_proc.wait()
+    except JobCancelled:
+        if log_cb:
+            log_cb("cancelled - removing partial archive")
+        dest_path.unlink(missing_ok=True)
+        raise
 
     if zstd_proc.returncode != 0:
         raise RuntimeError(f"zstd compression failed (exit code {zstd_proc.returncode})")

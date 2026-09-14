@@ -10,7 +10,7 @@ from ..app_config import get_config, set_config
 from ..auth import require_login
 from ..config import BROWSE_ROOTS
 from ..db import get_session, session_scope
-from ..jobs import Job, create_job, get_job, run_in_background
+from ..jobs import Job, cancel_job, create_job, get_job, run_in_background
 from ..models import AppSetting, BackupJob
 from ..paths import classify_data_paths, dir_size_bytes, human_size, path_to_root_subpath
 from ..web import templates
@@ -83,6 +83,7 @@ def _do_backup(job: Job, container_name: str, dest_dir: Path, stop_first: bool, 
             exclude_patterns=exclude_patterns,
             log_cb=job.log,
             progress_cb=job.set_percent,
+            cancel_check=job.is_cancelled,
         )
         job.log(f"archive written: {dest_file} ({human_size(size)})")
         job.result = {"archive_path": str(dest_file), "size_bytes": size}
@@ -165,3 +166,9 @@ def backup_job_status(request: Request, job_id: str, user: str = Depends(require
     return templates.TemplateResponse(
         request, "partials/job_status.html", {"job_id": job_id, "kind": "backup", "job": snap}
     )
+
+
+@router.post("/jobs/{job_id}/cancel")
+def backup_job_cancel(job_id: str, user: str = Depends(require_login)):
+    cancel_job(job_id)
+    return RedirectResponse(f"/backup/jobs/{job_id}", status_code=303)

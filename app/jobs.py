@@ -10,12 +10,16 @@ from datetime import datetime, timezone
 from typing import Callable
 
 
+class JobCancelled(Exception):
+    """Raised to unwind a running job when cancellation was requested."""
+
+
 @dataclass
 class Job:
     id: str
     kind: str  # backup | restore
     container_name: str
-    status: str = "running"  # running | success | failed
+    status: str = "running"  # running | success | failed | cancelled
     percent: int = 0
     log_lines: list[str] = field(default_factory=list)
     error: str | None = None
@@ -23,6 +27,7 @@ class Job:
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     finished_at: datetime | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock)
+    _cancel_event: threading.Event = field(default_factory=threading.Event)
 
     def log(self, line: str) -> None:
         with self._lock:
@@ -33,6 +38,13 @@ class Job:
     def set_percent(self, pct: int) -> None:
         with self._lock:
             self.percent = max(0, min(100, pct))
+
+    def request_cancel(self) -> None:
+        self._cancel_event.set()
+        self.log("cancellation requested…")
+
+    def is_cancelled(self) -> bool:
+        return self._cancel_event.is_set()
 
     def finish(self, status: str, error: str | None = None, result: dict | None = None) -> None:
         with self._lock:
@@ -72,25 +84,37 @@ def get_job(job_id: str) -> Job | None:
         return _JOBS.get(job_id)
 
 
+def cancel_job(job_id: str) -> bool:
+    job = get_job(job_id)
+    if job and job.status == "running":
+        job.request_cancel()
+        return True
+    return False
+
+
 def run_in_background(fn: Callable[[Job], None], job: Job) -> None:
     def _run():
         try:
             fn(job)
             if job.status == "running":
                 job.finish("success")
+        except JobCancelled:
+            job.log("cancelled")
+            job.finish("cancelled")
+            _record_outcome(job, "cancelled")
         except Exception as exc:  # noqa: BLE001
             job.log(f"ERROR: {exc}")
             job.finish("failed", error=str(exc))
-            _record_failure(job)
+            _record_outcome(job, "failed")
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
 
 
-def _record_failure(job: Job) -> None:
+def _record_outcome(job: Job, status: str) -> None:
     # A successful backup/restore records its own detailed BackupJob row;
-    # a failed one otherwise vanishes once the in-memory Job is gone
-    # (e.g. on container restart), leaving no trace on the Logs page.
+    # a failed or cancelled one otherwise vanishes once the in-memory Job
+    # is gone (e.g. on container restart), leaving no trace on the Logs page.
     try:
         from .db import session_scope
         from .models import BackupJob
@@ -102,7 +126,7 @@ def _record_failure(job: Job) -> None:
                     container_name=job.container_name,
                     kind=job.kind,
                     finished_at=job.finished_at,
-                    status="failed",
+                    status=status,
                     message=job.error,
                 )
             )
