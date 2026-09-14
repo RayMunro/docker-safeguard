@@ -100,6 +100,10 @@ def backup_run(
 ):
     root = BROWSE_ROOTS[destination_root]
     dest_dir = (root / destination_subpath.lstrip("/")).resolve()
+    if dest_dir == root.resolve():
+        # Never write archives loose at a share's root - they'd end up
+        # sitting unnoticed among unrelated top-level shares/folders.
+        dest_dir = dest_dir / "backups" / name
 
     inspect_data = docker_client.inspect(name)
     mounts = docker_client.bind_mounts(inspect_data)

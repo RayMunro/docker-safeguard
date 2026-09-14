@@ -81,6 +81,31 @@ def run_in_background(fn: Callable[[Job], None], job: Job) -> None:
         except Exception as exc:  # noqa: BLE001
             job.log(f"ERROR: {exc}")
             job.finish("failed", error=str(exc))
+            _record_failure(job)
 
     thread = threading.Thread(target=_run, daemon=True)
     thread.start()
+
+
+def _record_failure(job: Job) -> None:
+    # A successful backup/restore records its own detailed BackupJob row;
+    # a failed one otherwise vanishes once the in-memory Job is gone
+    # (e.g. on container restart), leaving no trace on the Logs page.
+    try:
+        from .db import session_scope
+        from .models import BackupJob
+
+        with session_scope() as session:
+            session.add(
+                BackupJob(
+                    job_uuid=job.id,
+                    container_name=job.container_name,
+                    kind=job.kind,
+                    finished_at=job.finished_at,
+                    status="failed",
+                    message=job.error,
+                )
+            )
+            session.commit()
+    except Exception:  # noqa: BLE001
+        pass

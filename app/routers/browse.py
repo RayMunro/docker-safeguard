@@ -14,11 +14,18 @@ def browse_dirs(
     path: str = "",
     target_input: str = "destination_subpath",
     open_url: str = "",
+    sync: str = "",
     user: str = Depends(require_login),
 ):
     listing = list_directory(root, path)
     return templates.TemplateResponse(
         request,
         "partials/browser.html",
-        {"listing": listing, "root": root, "target_input": target_input, "open_url": open_url},
+        {
+            "listing": listing,
+            "root": root,
+            "target_input": target_input,
+            "open_url": open_url,
+            "sync": sync,
+        },
     )

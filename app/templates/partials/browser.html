@@ -5,7 +5,7 @@
   <div class="file-browser">
     {% if listing.subpath %}
     <div class="file-row is-dir"
-         hx-get="/browse/dirs?root={{ root }}&path={{ (listing.subpath.rsplit('/', 1)[0] if '/' in listing.subpath else '') }}&target_input={{ target_input }}&open_url={{ open_url }}"
+         hx-get="/browse/dirs?root={{ root }}&path={{ (listing.subpath.rsplit('/', 1)[0] if '/' in listing.subpath else '') }}&target_input={{ target_input }}&open_url={{ open_url }}&sync=1"
          hx-target="#browser" hx-swap="outerHTML">
       .. (up)
     </div>
@@ -13,7 +13,7 @@
     {% for entry in listing.entries %}
       {% if entry.is_dir %}
       <div class="file-row is-dir"
-           hx-get="/browse/dirs?root={{ root }}&path={{ (listing.subpath + '/' + entry.name).strip('/') }}&target_input={{ target_input }}&open_url={{ open_url }}"
+           hx-get="/browse/dirs?root={{ root }}&path={{ (listing.subpath + '/' + entry.name).strip('/') }}&target_input={{ target_input }}&open_url={{ open_url }}&sync=1"
            hx-target="#browser" hx-swap="outerHTML">
         {{ entry.name }}
       </div>
@@ -34,11 +34,19 @@
   </div>
   <div class="row" style="margin-top:8px">
     {% if not open_url %}
-    <button type="button" class="btn btn-sm btn-secondary"
-      onclick="document.getElementById('{{ target_input }}').value='{{ listing.subpath }}'; document.getElementById('{{ target_input }}_root') && (document.getElementById('{{ target_input }}_root').value='{{ root }}');">
-      Use this folder
-    </button>
-    {% endif %}
+    <span class="badge badge-success">✓ selected: {{ listing.full_path }}</span>
+    {% else %}
     <span class="muted">{{ listing.full_path }}</span>
+    {% endif %}
   </div>
+  {% if not open_url and sync %}
+  <script>
+    (function () {
+      var input = document.getElementById('{{ target_input }}');
+      if (input) input.value = '{{ listing.subpath }}';
+      var rootInput = document.getElementById('{{ target_input }}_root');
+      if (rootInput) rootInput.value = '{{ root }}';
+    })();
+  </script>
+  {% endif %}
 </div>

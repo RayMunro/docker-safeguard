@@ -32,6 +32,8 @@ def _run_scheduled_backup(schedule_id: int) -> None:
         log.warning("schedule %s has unknown destination root %r", schedule_id, root_key)
         return
     dest_dir = (root / subpath.lstrip("/")).resolve()
+    if dest_dir == root.resolve():
+        dest_dir = dest_dir / "backups" / container_name
 
     job = create_job("backup", container_name)
     run_in_background(lambda j: _do_backup(j, container_name, dest_dir, True, [], None), job)
