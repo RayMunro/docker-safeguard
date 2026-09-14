@@ -216,7 +216,7 @@ textarea { resize: vertical; min-height: 70px; font-family: ui-monospace, monosp
 .checkbox-row input { width: auto; }
 
 .auth-wrap {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
   background: var(--bg); padding: 20px;
 }
 .auth-card { width: 100%; max-width: 380px; }
@@ -274,6 +274,13 @@ table th { color: var(--text-muted); font-weight: 600; font-size: .78rem; text-t
 .file-row.is-file::before { content: "🗄"; margin-right: 8px; }
 
 .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+
+.footer {
+  text-align: center;
+  padding: 20px 16px 28px;
+  color: var(--text-muted);
+  font-size: .78rem;
+}
 
 .stack { display: flex; flex-direction: column; gap: 16px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
